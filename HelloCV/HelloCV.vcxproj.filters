@@ -39,4 +39,19 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="lena.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="output.avi">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="atmos.mp4">
+      <Filter>Resource Files</Filter>
+    </Media>
+  </ItemGroup>
 </Project>

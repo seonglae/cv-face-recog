@@ -1,1 +1,6 @@
 .vs
+x64
+*.avi
+*.json
+*.mp4
+*.jpg

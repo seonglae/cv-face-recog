@@ -13,7 +13,6 @@ struct matPoint {
 };
 
 void videoEditShow(VideoCapture cap) {
-	checkCap(cap);
 	int w = cvRound(cap.get(CAP_PROP_FRAME_WIDTH));
 	int h = cvRound(cap.get(CAP_PROP_FRAME_HEIGHT));
 	double fps = cap.get(CAP_PROP_FPS);
@@ -22,13 +21,16 @@ void videoEditShow(VideoCapture cap) {
 	VideoWriter outputVideo("output.avi", fourcc, fps, Size(w, h));
 	checkWrt(outputVideo);
 
-	int input;
-	Mat frame, inversed, outFrame;
+	Mat frame, inversed, outFrame, read;
 	matPoint userdata;
-	FileStorage fs;
 	namedWindow("frame");
 	setMouseCallback("frame", onMouse, (void*)&userdata);
+
+	int input;
 	int index = 0;
+	int redex = 0;
+	FileStorage fsWrite = initWrite();
+	
 	while (true) {
 		cap >> frame;
 		input = waitKey(delay);
@@ -42,15 +44,25 @@ void videoEditShow(VideoCapture cap) {
 		}
 		// save
 		if (input == 's' || input == 'w') {
-			fs = initWrite();
-			checkFile(fs);
-			fs << "frame" << frame;
+			fsWrite << "frame" + to_string(index) << frame;
+			cout << "frame " + to_string(index) + " saved" << endl;
+			index++;
 		}
 		// read from new window
 		if (input == 'r') {
-			inversed = ~frame;
-			imshow("inversed", inversed);
-			outputVideo << inversed;
+			cout << "read start" << endl;
+			fsWrite.release();
+			cout << "relase finished" << endl;
+			FileStorage fs = initRead();
+			while (redex < index) {
+				cout << "starts to read frame " + to_string(redex) << endl;
+				fs["frame" + to_string(redex)] >> read;
+				imshow("read", read);
+				input = waitKey(delay);
+				redex++;
+			}
+			fs.release();
+			break;
 		}
 		// show text
 		if (input == 't') {
@@ -58,7 +70,6 @@ void videoEditShow(VideoCapture cap) {
 		}
 		// default camera
 		imshow("frame", frame);
-		index++;
 	}
 	destroyAllWindows();
 }
