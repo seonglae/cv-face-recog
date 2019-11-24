@@ -3,84 +3,130 @@
 #include "draw.h"
 #include "video.h"
 #include "data.h"
+#include "key.h"
+#include "Windows.h"
+#include <future>
+#include <thread>
 
 using namespace cv;
 using namespace std;
 
-struct matPoint {
-	Mat img = imread("lena.jpg");
-	Point ptOld;
-};
+static Mat frame, previous, motion;
+static int valueB, valueC;
+static CascadeClassifier faceCascade;
 
 void videoEditShow(VideoCapture cap) {
+	// init writer
 	int w = cvRound(cap.get(CAP_PROP_FRAME_WIDTH));
 	int h = cvRound(cap.get(CAP_PROP_FRAME_HEIGHT));
+	cout << "width : " << w << " , heith : " << h << endl;
 	double fps = cap.get(CAP_PROP_FPS);
 	int fourcc = VideoWriter::fourcc('D', 'I', 'V', 'X');
-	int delay = cvRound(1000 / fps);
+	int delay = cvRound(1000 / fps) / 2;
 	VideoWriter outputVideo("output.avi", fourcc, fps, Size(w, h));
 	checkWrt(outputVideo);
 
-	Mat frame, inversed, outFrame, read;
-	matPoint userdata;
-	namedWindow("frame");
-	setMouseCallback("frame", onMouse, (void*)&userdata);
-
-	int input;
+	// set fs writer
 	int index = 0;
-	int redex = 0;
 	FileStorage fsWrite = initWrite();
+	bool clean = true;
+	bool saved = false;
 	
+	// face
+	String faceXML = "C:\\opencv\\sources\\data\\haarcascades_cuda\\haarcascade_frontalface_alt.xml";
+	faceCascade.load(faceXML);
+
+	// set temp variables
+	Mat outFrame;
 	while (true) {
-		cap >> frame;
-		input = waitKey(delay);
-		if (frame.empty() || input == 27 || input == 'q')
+		countT = tick("frame", countT);
+		frame = showFrame(cap);
+
+		if (frame.empty() || GetAsyncKeyState(VK_ESCAPE) || GetAsyncKeyState(0x51))
 			break;
-		// reverse output
-		if (input == 'i' || input == 'o') {
-			inversed = ~frame;
-			imshow("inversed", inversed);
-			outputVideo << inversed;
-		}
-		// save
-		if (input == 's' || input == 'w') {
+		waitKey(delay);
+
+		// write
+		if (GetAsyncKeyState(0x57)) { // w
 			fsWrite << "frame" + to_string(index) << frame;
-			cout << "frame " + to_string(index) + " saved" << endl;
 			index++;
 		}
+		else if (GetAsyncKeyState(0x56)) {// v
+			if (saved)
+				continue;
+			// todo - refactoring devide save and inverse
+			showSaveInverse(cap, outputVideo, frame, delay);
+			clean = false;
+		}
+		else if (GetAsyncKeyState(0x4C)) { // l
+			// todo - start time laps until next press l
+			timeLaps(cap, outputVideo, frame, delay, 10);
+			clean = false;
+		}
 		// read from new window
-		if (input == 'r') {
-			cout << "read start" << endl;
+		else if (GetAsyncKeyState(0x52)) {// r
+			if (index == 0)
+				continue;
 			fsWrite.release();
-			cout << "relase finished" << endl;
-			FileStorage fs = initRead();
-			while (redex < index) {
-				cout << "starts to read frame " + to_string(redex) << endl;
-				fs["frame" + to_string(redex)] >> read;
-				imshow("read", read);
-				input = waitKey(delay);
-				redex++;
+			showStopMotion(cap, delay, index);
+			fsWrite = initApp();
+		}
+		// video file
+		else if (GetAsyncKeyState(0x55)) {// u - reset
+			if (index == 0)
+				continue;
+			fsWrite.release();
+			fsWrite = initWrite();
+			index = 0;
+		}
+		else if (GetAsyncKeyState(0x58)) {// x - save(reset) and show
+			destroyWindow("saving");
+			saved = true;
+			if (clean)
+				continue;
+			Mat resultFrame;
+			if(outputVideo.isOpened())
+				outputVideo.release();
+			VideoCapture result("output.avi");
+			while (true) {
+				result >> resultFrame;
+				if (resultFrame.empty())
+					break;
+				imshow("result", resultFrame);
+				waitKey(delay);
+				if (frame.empty() || GetAsyncKeyState(VK_ESCAPE) || GetAsyncKeyState(0x51))
+					break;
+				frame = showFrame(cap);
 			}
-			fs.release();
-			break;
+			result.release();
+			destroyWindow("result");
 		}
-		// show text
-		if (input == 't') {
-			outFrame = changeFrame(frame);
+		else if (GetAsyncKeyState(0x59)) {// y
+			saved = false;
+			destroyWindow("saving");
+			if (outputVideo.isOpened())
+				outputVideo.~VideoWriter();
+			outputVideo.open("output.avi", fourcc, fps, Size(w, h));
+			checkWrt(outputVideo);
+			clean = true;
 		}
-		// default camera
-		imshow("frame", frame);
+		previous = frame.clone();
 	}
+	// release and destroy windows
+	outputVideo.release();
+	fsWrite.release();
 	destroyAllWindows();
 }
 
 Mat changeFrame(Mat frame) {
-	Mat newFrame = frame.clone();
-	changeMat(newFrame);
-	drawPolys(newFrame);
-	return newFrame;
+	//  return changed
+	frame = mask_setTo(frame);
+	frame = mask_copyTo(frame);
+	return frame;
 }
 
+
+// open checker
 void checkCap(VideoCapture cap) {
 	if (!cap.isOpened()) {
 		cerr << "Camera open failed!" << endl;
@@ -95,23 +141,87 @@ void checkWrt(VideoWriter output) {
 	}
 }
 
+Mat showFrame(VideoCapture cap) {
+	Mat frame;
+	cap >> frame;
+	face(frame, faceCascade);
+	return Options(frame);;
+}
 
-void onMouse(int event, int x, int y, int flags, void* userdata) {
-	matPoint* data = (matPoint*) userdata;
-	Mat img = data->img;
-	Point ptOld = data->ptOld;
-	switch (event) {
-	case EVENT_LBUTTONDOWN:
-		data->ptOld = Point(x, y);
-		break;
-	case EVENT_MOUSEMOVE:
-		if (flags == EVENT_FLAG_LBUTTON) {
-			line(img, ptOld, Point(x, y), Scalar(255, 255, 255), 2);
-			imshow("img", img);
-			data->ptOld = Point(x, y);
-		}
-		break;
-	default:
-		break;
+Mat Options(Mat frame) {
+	if (GetKeyState(0x42)) // b
+		bright(frame);
+	if (GetKeyState(0x43)) // c 
+		contrast(frame);
+
+	// change
+	if (GetKeyState(0x5A)) // z
+		frame = changeFrame(frame);
+	if (GetKeyState(0x49)) // i
+		frame = ~frame;
+	if (GetKeyState(0x54)) // t
+		drawText(frame);
+	if (GetKeyState(0x4E)) // n
+		normalize(frame, frame, 0, 255, NORM_MINMAX, CV_8UC3);
+	if (GetKeyState(0x45)) { // e
+		Mat ycrcb, ycrcbDst;
+		vector<Mat> bgr_planes;
+		cvtColor(frame, ycrcb, COLOR_BGR2YCrCb);
+		split(ycrcb, bgr_planes);
+		equalizeHist(bgr_planes[0], bgr_planes[0]);
+		merge(bgr_planes, ycrcbDst);
+		cvtColor(ycrcbDst, frame, COLOR_YCrCb2BGR);
+	}
+	if (GetKeyState(0x53)) // s
+		histgoram_stretching(frame);
+	if (GetKeyState(0x47)) { // G
+		cvtColor(frame, frame, COLOR_BGR2GRAY);
+		cvtColor(frame, frame, COLOR_GRAY2BGR);
+	}
+
+	//data
+	if (GetKeyState(0x48)) {// histogram
+		showHist(frame);
+	}
+	else
+		if (GetAsyncKeyState(0x48))
+			destroyWindow("histogram");
+
+	// show
+	if (GetKeyState(0x44)) // difference
+		imshow("camera", previous - frame);
+	else 
+		imshow("camera", frame);
+	return frame;
+}
+
+void bright(Mat frame) {
+	if (GetAsyncKeyState(0x42)) { // b
+		createTrackbar("Brightness", "camera", &valueB, 200);
+		setTrackbarPos("Brightness", "camera", 100);
+	}
+	frame = frame + Scalar((double)valueB - 100, (double)valueB - 100, (double)valueB - 100);
+}
+
+void contrast(Mat frame) {
+	if (GetAsyncKeyState(0x43)) { // c
+		createTrackbar("Contrast", "camera", &valueC, 100);
+		setTrackbarPos("Contrast", "camera", 10);
+	}
+	frame = frame * ((float)valueC / 10);
+}
+
+void face(Mat frame, CascadeClassifier faceCascade) {
+	std::vector<Rect> faces;
+	Mat frame_gray;
+
+	cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
+	equalizeHist(frame_gray, frame_gray);
+	faceCascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
+
+	for (size_t i = 0; i < faces.size(); i++) {
+		Point center(faces[i].x + faces[i].width / 2, faces[i].y + faces[i].height / 2);
+		ellipse(frame, center, Size(faces[i].width / 2, faces[i].height / 2),
+			0, 0, 360, Scalar(222, 220, 220, 50), 2, LINE_AA, 0);
 	}
 }

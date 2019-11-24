@@ -27,8 +27,20 @@ FileStorage initWrite() {
 }
 
 FileStorage initMem() {
-	FileStorage fs(FILE_NAME, FileStorage::MEMORY);
+	FileStorage fs(FILE_NAME, FileStorage::WRITE | FileStorage::WRITE);
 	checkFile(fs);
 	cout << "Memory init finished" << endl;
 	return fs;
+}
+
+FileStorage initApp() {
+	FileStorage fs(FILE_NAME, FileStorage::APPEND);
+	checkFile(fs);
+	cout << "Append init finished" << endl;
+	return fs;
+}
+
+int64 tick(String msg, int64 previous) {
+	cout << msg << " cost : " << (getTickCount() - previous) / (getTickFrequency() / 1000) << "ms" << endl;
+	return getTickCount();
 }

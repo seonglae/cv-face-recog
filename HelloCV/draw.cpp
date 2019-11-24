@@ -5,6 +5,28 @@
 using namespace std;
 using namespace cv;
 
+void onMouse(int event, int x, int y, int flags, void* userdata) {
+	// mouse callback
+	matPoint* data = (matPoint*)userdata;
+	Mat img = data->img;
+	Point ptOld = data->ptOld;
+	// todo - draw line function refactoring
+	switch (event) {
+	case EVENT_LBUTTONDOWN:
+		data->ptOld = Point(x, y);
+		break;
+	case EVENT_MOUSEMOVE:
+		if (flags == EVENT_FLAG_LBUTTON) {
+			line(img, ptOld, Point(x, y), Scalar(255, 255, 255), 2);
+			imshow("img", img);
+			data->ptOld = Point(x, y);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 void drawLines(Mat img) {
 	line(img, Point(250, 50), Point(350, 100), Scalar(0, 0, 255), 6, LINE_AA);
 	arrowedLine(img, Point(50, 300), Point(350, 300), Scalar(255, 0, 0), 1, LINE_AA, 0, 0.05);
@@ -27,9 +49,9 @@ void drawPolys(Mat img) {
 }
 
 void drawText(Mat img) {
-	putText(img, "SIMPLEX", Point(20, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 1, LINE_AA);
-	putText(img, "PLAIN", Point(20, 100), FONT_HERSHEY_PLAIN, 1, Scalar(255, 255, 255), 1, LINE_AA);
-	putText(img, "DUPLEX", Point(20, 150), FONT_HERSHEY_DUPLEX, 1, Scalar(255, 255, 255), 1, LINE_AA);
+	putText(img, "SIMPLEX BROWN HAIR", Point(20, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 1, LINE_AA);
+	putText(img, "PLAIN ARE YOU DING WHAT IS HERE", Point(20, 100), FONT_HERSHEY_PLAIN, 1, Scalar(255, 255, 255), 1, LINE_AA);
+	putText(img, "DUPLEX IS NEW FLEX STYLE", Point(20, 150), FONT_HERSHEY_DUPLEX, 1, Scalar(255, 255, 255), 1, LINE_AA);
 }
 
 void centerText(Mat img, String text) {
@@ -50,4 +72,92 @@ void changeMat(Mat img) {
 		(*it)[1] = (*it)[1] / 2 + 100; // G
 		(*it)[2] = (*it)[2] / 2 + 100; // R
 	}
+}
+
+Mat mask_copyTo(Mat dst) {
+	Size temp = dst.size();
+	Mat src = imread("airplane.bmp", IMREAD_COLOR);
+	Mat mask = imread("mask_plane.bmp", IMREAD_GRAYSCALE);
+
+	if (src.empty() || mask.empty() || dst.empty()) {
+		cerr << "Image load failed!" << endl;
+		return dst;
+	}
+	resize(src, src, temp, 0, 0, INTER_AREA);
+	resize(mask, mask, temp, 0, 0, INTER_AREA);
+
+	src.copyTo(dst, mask);
+	return dst;
+}
+
+Mat mask_setTo(Mat src) {
+	Size temp = src.size();
+	Mat mask = imread("mask_smile.bmp", IMREAD_GRAYSCALE);
+	flip(mask, mask, 0);
+	resize(mask, mask, temp, 0, 0, cv::INTER_AREA);
+
+	if (src.empty() || mask.empty()) {
+		cerr << "Image load failed!" << endl;
+		return src;
+	}
+	src.setTo(Scalar(255, 255, 255), mask);
+	return src;
+}
+
+
+void showHist(Mat frame) {
+	int hbins = 255;
+	int channels[] = { 0 }; //index of channel
+	int histSize[] = { hbins };
+	float hranges[] = { 0, 255 };
+	const float* ranges[] = { hranges };
+
+	MatND HistB, HistG, HistR;
+	vector<Mat> bgr_planes;
+	split(frame, bgr_planes);
+	calcHist(&bgr_planes[0], 1, 0, Mat(), HistB, 1, histSize, ranges, true, false);
+	calcHist(&bgr_planes[1], 1, 0, Mat(), HistG, 1, histSize, ranges, true, false);
+	calcHist(&bgr_planes[2], 1, 0, Mat(), HistR, 1, histSize, ranges, true, false);
+
+	normalize(HistB, HistB, 0, 255, NORM_MINMAX);
+	normalize(HistG, HistG, 0, 255, NORM_MINMAX);
+	normalize(HistR, HistR, 0, 255, NORM_MINMAX);
+
+	// Draw the histograms for B, G and R
+	int hist_w = 1000; int hist_h = 255;
+	int ratio = cvRound((double)hist_w / hbins);
+	Mat histImage(hist_h, hist_w, CV_8UC3, Scalar(0, 0, 0));
+
+	int x1, y1;
+	int x2, y2;
+	for (int i = 1; i < hbins; i++)
+	{
+		x1 = ratio * (i - 1);
+		y1 = hist_h - cvRound(HistB.at<float>(i - 1));
+		x2 = ratio * (i);
+		y2 = hist_h - cvRound(HistB.at<float>(i));
+
+		//Blue
+		line(histImage, Point(x1, y1), Point(x2, y2),
+			CV_RGB(0, 0, 255), 2, 8, 0);
+
+		//Green
+		y1 = hist_h - cvRound(HistG.at<float>(i - 1));
+		y2 = hist_h - cvRound(HistG.at<float>(i));
+		line(histImage, Point(x1, y1), Point(x2, y2),
+			CV_RGB(0, 255, 0), 2, 8, 0);
+
+		//Red
+		y1 = hist_h - cvRound(HistR.at<float>(i - 1));
+		y2 = hist_h - cvRound(HistR.at<float>(i));
+		line(histImage, Point(x1, y1), Point(x2, y2),
+			CV_RGB(255, 0, 0), 2, 8, 0);
+	}
+	imshow("histogram", histImage);
+}
+
+void histgoram_stretching(Mat src) {
+	double gmin, gmax;
+	minMaxLoc(src, &gmin, &gmax);
+	src = (src - gmin) * 255 / (gmax - gmin);
 }
