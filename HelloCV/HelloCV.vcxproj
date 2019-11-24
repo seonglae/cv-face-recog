@@ -152,14 +152,19 @@
     <ClCompile Include="draw.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="data.cpp" />
+    <ClCompile Include="key.cpp" />
     <ClCompile Include="video.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="draw.h" />
     <ClInclude Include="data.h" />
+    <ClInclude Include="key.h" />
     <ClInclude Include="video.h" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\CVMLCPP\vs2019\ch04\utils\airplane.bmp" />
+    <Image Include="..\..\CVMLCPP\vs2019\ch04\utils\field.bmp" />
+    <Image Include="..\..\CVMLCPP\vs2019\ch04\utils\mask_plane.bmp" />
     <Image Include="lena.jpg" />
   </ItemGroup>
   <ItemGroup>
