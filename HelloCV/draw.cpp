@@ -109,7 +109,7 @@ void showHist(Mat frame) {
 	int hbins = 255;
 	int channels[] = { 0 }; //index of channel
 	int histSize[] = { hbins };
-	float hranges[] = { 0, 255 };
+	float hranges[] = { 0, 256 };
 	const float* ranges[] = { hranges };
 
 	MatND HistB, HistG, HistR;
@@ -124,7 +124,7 @@ void showHist(Mat frame) {
 	normalize(HistR, HistR, 0, 255, NORM_MINMAX);
 
 	// Draw the histograms for B, G and R
-	int hist_w = 1000; int hist_h = 255;
+	int hist_w = 1020; int hist_h = 255;
 	int ratio = cvRound((double)hist_w / hbins);
 	Mat histImage(hist_h, hist_w, CV_8UC3, Scalar(0, 0, 0));
 
@@ -139,19 +139,19 @@ void showHist(Mat frame) {
 
 		//Blue
 		line(histImage, Point(x1, y1), Point(x2, y2),
-			CV_RGB(0, 0, 255), 2, 8, 0);
+			CV_RGB(0, 0, 255), 2, LINE_AA, 0);
 
 		//Green
 		y1 = hist_h - cvRound(HistG.at<float>(i - 1));
 		y2 = hist_h - cvRound(HistG.at<float>(i));
 		line(histImage, Point(x1, y1), Point(x2, y2),
-			CV_RGB(0, 255, 0), 2, 8, 0);
+			CV_RGB(0, 255, 0), 2, LINE_AA, 0);
 
 		//Red
 		y1 = hist_h - cvRound(HistR.at<float>(i - 1));
 		y2 = hist_h - cvRound(HistR.at<float>(i));
 		line(histImage, Point(x1, y1), Point(x2, y2),
-			CV_RGB(255, 0, 0), 2, 8, 0);
+			CV_RGB(255, 0, 0), 2, LINE_AA, 0);
 	}
 	imshow("histogram", histImage);
 }
@@ -160,4 +160,19 @@ void histgoram_stretching(Mat src) {
 	double gmin, gmax;
 	minMaxLoc(src, &gmin, &gmax);
 	src = (src - gmin) * 255 / (gmax - gmin);
+}
+
+void rounded_rectangle(Mat& src, Point topLeft, Point bottomRight, const Scalar lineColor, const int thickness, const int lineType, const int cornerRadius) {
+	Point p1 = topLeft;
+	Point p2 = Point(bottomRight.x, topLeft.y);
+	Point p3 = bottomRight;
+	Point p4 = Point(topLeft.x, bottomRight.y);
+	line(src, Point(p1.x + cornerRadius, p1.y), Point(p2.x - cornerRadius, p2.y), lineColor, thickness, lineType);
+	line(src, Point(p2.x, p2.y + cornerRadius), Point(p3.x, p3.y - cornerRadius), lineColor, thickness, lineType);
+	line(src, Point(p4.x + cornerRadius, p4.y), Point(p3.x - cornerRadius, p3.y), lineColor, thickness, lineType);
+	line(src, Point(p1.x, p1.y + cornerRadius), Point(p4.x, p4.y - cornerRadius), lineColor, thickness, lineType);
+	ellipse(src, p1 + Point(cornerRadius, cornerRadius), Size(cornerRadius, cornerRadius), 180.0, 0, 90, lineColor, thickness, lineType);
+	ellipse(src, p2 + Point(-cornerRadius, cornerRadius), Size(cornerRadius, cornerRadius), 270.0, 0, 90, lineColor, thickness, lineType);
+	ellipse(src, p3 + Point(-cornerRadius, -cornerRadius), Size(cornerRadius, cornerRadius), 0.0, 0, 90, lineColor, thickness, lineType);
+	ellipse(src, p4 + Point(cornerRadius, -cornerRadius), Size(cornerRadius, cornerRadius), 90.0, 0, 90, lineColor, thickness, lineType);
 }
