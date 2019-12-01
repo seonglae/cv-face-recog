@@ -8,4 +8,4 @@ void onMouse(int event, int x, int y, int flags, void* userdata);
 cv::Mat Options(cv::Mat frame);
 void bright(cv::Mat frame);
 void contrast(cv::Mat frame);
-void face(cv::Mat frame, cv::CascadeClassifier faceCascade);
+void checkCascade(cv::Mat frame, cv::CascadeClassifier faceCascade);

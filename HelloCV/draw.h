@@ -15,3 +15,4 @@ cv::Mat mask_setTo(cv::Mat src);
 void onMouse(int event, int x, int y, int flags, void* userdata);
 void showHist(cv::Mat frame);
 void histgoram_stretching(cv::Mat src);
+void rounded_rectangle(cv::Mat& src, cv::Point topLeft, cv::Point bottomRight, const cv::Scalar lineColor, const int thickness, const int lineType, const int cornerRadius);

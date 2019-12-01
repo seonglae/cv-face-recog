@@ -11,7 +11,7 @@
 using namespace cv;
 using namespace std;
 
-static Mat frame, previous, motion;
+static Mat frame, previous, motion, temp;
 static int valueB, valueC;
 static CascadeClassifier faceCascade;
 
@@ -33,6 +33,7 @@ void videoEditShow(VideoCapture cap) {
 	bool saved = false;
 	
 	// face
+
 	String faceXML = "C:\\opencv\\sources\\data\\haarcascades_cuda\\haarcascade_frontalface_alt.xml";
 	faceCascade.load(faceXML);
 
@@ -44,7 +45,7 @@ void videoEditShow(VideoCapture cap) {
 
 		if (frame.empty() || GetAsyncKeyState(VK_ESCAPE) || GetAsyncKeyState(0x51))
 			break;
-		waitKey(delay);
+		waitKey(1);
 
 		// write
 		if (GetAsyncKeyState(0x57)) { // w
@@ -93,7 +94,7 @@ void videoEditShow(VideoCapture cap) {
 				if (resultFrame.empty())
 					break;
 				imshow("result", resultFrame);
-				waitKey(delay);
+				waitKey(1);
 				if (frame.empty() || GetAsyncKeyState(VK_ESCAPE) || GetAsyncKeyState(0x51))
 					break;
 				frame = showFrame(cap);
@@ -144,16 +145,20 @@ void checkWrt(VideoWriter output) {
 Mat showFrame(VideoCapture cap) {
 	Mat frame;
 	cap >> frame;
-	face(frame, faceCascade);
+	checkCascade(frame, faceCascade);
 	return Options(frame);;
 }
 
 Mat Options(Mat frame) {
+	// bright and contrast
 	if (GetKeyState(0x42)) // b
 		bright(frame);
 	if (GetKeyState(0x43)) // c 
 		contrast(frame);
-
+	if (GetKeyState(0x46)) { // f
+		medianBlur(frame, temp, 3);
+		bilateralFilter(temp, frame, -1, 10, 5);
+	}
 	// change
 	if (GetKeyState(0x5A)) // z
 		frame = changeFrame(frame);
@@ -172,8 +177,9 @@ Mat Options(Mat frame) {
 		merge(bgr_planes, ycrcbDst);
 		cvtColor(ycrcbDst, frame, COLOR_YCrCb2BGR);
 	}
-	if (GetKeyState(0x53)) // s
+	if (GetKeyState(0x53)) { // s
 		histgoram_stretching(frame);
+	}
 	if (GetKeyState(0x47)) { // G
 		cvtColor(frame, frame, COLOR_BGR2GRAY);
 		cvtColor(frame, frame, COLOR_GRAY2BGR);
@@ -186,7 +192,6 @@ Mat Options(Mat frame) {
 	else
 		if (GetAsyncKeyState(0x48))
 			destroyWindow("histogram");
-
 	// show
 	if (GetKeyState(0x44)) // difference
 		imshow("camera", previous - frame);
@@ -211,17 +216,17 @@ void contrast(Mat frame) {
 	frame = frame * ((float)valueC / 10);
 }
 
-void face(Mat frame, CascadeClassifier faceCascade) {
+void checkCascade(Mat frame, CascadeClassifier Cascade) {
 	std::vector<Rect> faces;
 	Mat frame_gray;
 
 	cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
 	equalizeHist(frame_gray, frame_gray);
-	faceCascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
+	Cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
 
 	for (size_t i = 0; i < faces.size(); i++) {
-		Point center(faces[i].x + faces[i].width / 2, faces[i].y + faces[i].height / 2);
-		ellipse(frame, center, Size(faces[i].width / 2, faces[i].height / 2),
-			0, 0, 360, Scalar(222, 220, 220, 50), 2, LINE_AA, 0);
+		Point bottomRight(faces[i].x + faces[i].width, faces[i].y + faces[i].height);
+		Point topLeft(faces[i].x, faces[i].y);
+		rounded_rectangle(frame, topLeft, bottomRight, Scalar(222, 220, 220), 1, LINE_AA, 10);
 	}
 }

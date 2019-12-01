@@ -20,7 +20,7 @@ void timeLaps(VideoCapture cap, VideoWriter outputVideo, Mat frame, int delay, i
 		}
 		else
 			count++;
-		waitKey(delay);
+		waitKey(1);
 		frame = showFrame(cap);
 	}
 }
@@ -31,7 +31,7 @@ void showSaveInverse(VideoCapture cap, VideoWriter outputVideo, Mat frame, int d
 			break;
 		imshow("saving", frame);
 		outputVideo << frame;
-		waitKey(delay);
+		waitKey(1);
 		frame = showFrame(cap);
 	}
 }
@@ -48,7 +48,7 @@ void showStopMotion(VideoCapture cap, int delay, int index) {
 		fs["frame" + to_string(redex)] >> read;
 		imshow("read", read);
 		frame = showFrame(cap);
-		waitKey(delay);
+		waitKey(1);
 		redex++;
 	}
 	fs.release();
