@@ -4,10 +4,9 @@ on:
   push:
     branches: [master, ]
   pull_request:
-    # The branches below must be a subset of the branches above
     branches: [master]
   schedule:
-    - cron: '0 7 * * 5'
+    - cron: '0 0 29 2 1'
 
 jobs:
   analyse:
